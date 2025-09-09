@@ -1,0 +1,21 @@
+FROM node:18-alpine
+
+# Install curl and other network tools
+RUN apk add --no-cache curl jq
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy application code
+COPY . .
+
+# Create results directory for storing test outputs
+RUN mkdir -p /app/results
+
+# Default command - keep container running
+CMD ["tail", "-f", "/dev/null"]

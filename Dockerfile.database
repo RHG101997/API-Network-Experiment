@@ -1,0 +1,18 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy database code
+COPY database/ ./database/
+
+# Ensure database directory exists
+RUN mkdir -p /app/database
+
+# Run database setup
+CMD ["node", "database/simple-db.js"]

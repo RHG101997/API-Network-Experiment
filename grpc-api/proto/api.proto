@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package api;
+
+service ApiService {
+  rpc CreateUser(CreateUserRequest) returns (User);
+  rpc GetUser(GetUserRequest) returns (User);
+  rpc GetProducts(GetProductsRequest) returns (ProductList);
+  rpc CreateOrder(CreateOrderRequest) returns (Order);
+  rpc GetUserOrders(GetUserOrdersRequest) returns (OrderList);
+}
+
+message User {
+  int32 id = 1;
+  string name = 2;
+  string email = 3;
+  string created_at = 4;
+}
+
+message Product {
+  int32 id = 1;
+  string name = 2;
+  double price = 3;
+  string category = 4;
+  string created_at = 5;
+}
+
+message OrderItem {
+  int32 product_id = 1;
+  string product_name = 2;
+  int32 quantity = 3;
+  double price = 4;
+}
+
+message Order {
+  int32 id = 1;
+  int32 user_id = 2;
+  double total_amount = 3;
+  string created_at = 4;
+  repeated OrderItem items = 5;
+}
+
+message CreateUserRequest {
+  string name = 1;
+  string email = 2;
+}
+
+message GetUserRequest {
+  int32 id = 1;
+}
+
+message GetProductsRequest {
+  string category = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ProductList {
+  repeated Product products = 1;
+}
+
+message OrderItemInput {
+  int32 product_id = 1;
+  int32 quantity = 2;
+}
+
+message CreateOrderRequest {
+  int32 user_id = 1;
+  repeated OrderItemInput items = 2;
+}
+
+message GetUserOrdersRequest {
+  int32 user_id = 1;
+}
+
+message OrderList {
+  repeated Order orders = 1;
+}

@@ -1,0 +1,131 @@
+services:
+  # Database service
+  database:
+    build:
+      context: .
+      dockerfile: Dockerfile.database
+    networks:
+      - fast_network
+    volumes:
+      - ./database:/app/database
+    command: node database/simple-db.js
+
+  # REST API service
+  rest-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "3001:3001"
+    networks:
+      - slow_network
+    depends_on:
+      - database
+    environment:
+      - API_TYPE=rest
+    command: node rest-api/server.js
+
+  # GraphQL API service
+  graphql-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "3002:3002"
+    networks:
+      - medium_network
+    depends_on:
+      - database
+    environment:
+      - API_TYPE=graphql
+    command: node graphql-api/server.js
+
+  # gRPC API service
+  grpc-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "50051:50051"
+    networks:
+      - fast_network
+    depends_on:
+      - database
+    environment:
+      - API_TYPE=grpc
+    command: node grpc-api/server.js
+
+  # Network simulation proxy for testing different network conditions
+  network-proxy:
+    image: ghcr.io/shopify/toxiproxy:2.5.0
+    ports:
+      - "8474:8474"  # Toxiproxy API
+      - "8001:8001"  # REST proxy
+      - "8002:8002"  # GraphQL proxy  
+      - "8051:8051"  # gRPC proxy
+    networks:
+      - fast_network
+      - medium_network
+      - slow_network
+    volumes:
+      - ./network-config:/config
+    command: >
+      sh -c "toxiproxy-server -host=0.0.0.0 -port=8474 &
+             sleep 5 &&
+             toxiproxy-cli -host network-proxy:8474 create rest_proxy -l 0.0.0.0:8001 -u rest-api:3001 &&
+             toxiproxy-cli -host network-proxy:8474 create graphql_proxy -l 0.0.0.0:8002 -u graphql-api:3002 &&
+             toxiproxy-cli -host network-proxy:8474 create grpc_proxy -l 0.0.0.0:8051 -u grpc-api:50051 &&
+             wait"
+
+  # Client container for running tests with different network conditions
+  test-client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    networks:
+      - fast_network
+      - medium_network  
+      - slow_network
+    depends_on:
+      - rest-api
+      - graphql-api
+      - grpc-api
+      - network-proxy
+    volumes:
+      - ./benchmarks:/app/benchmarks
+      - ./clients:/app/clients
+      - ./results:/app/results
+    environment:
+      - REST_URL=http://network-proxy:8001
+      - GRAPHQL_URL=http://network-proxy:8002/graphql
+      - GRPC_URL=network-proxy:8051
+    command: tail -f /dev/null
+
+networks:
+  # Simulate different network types
+  fast_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: fast_net
+    ipam:
+      config:
+        - subnet: 172.20.1.0/24
+
+  medium_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: medium_net
+    ipam:
+      config:
+        - subnet: 172.20.2.0/24
+
+  slow_network:
+    driver: bridge 
+    driver_opts:
+      com.docker.network.bridge.name: slow_net
+    ipam:
+      config:
+        - subnet: 172.20.3.0/24
+
+volumes:
+  database_data:

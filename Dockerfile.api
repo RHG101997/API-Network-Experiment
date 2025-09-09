@@ -1,0 +1,21 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy application code
+COPY . .
+
+# Create results directory
+RUN mkdir -p /app/results
+
+# Expose ports for different APIs
+EXPOSE 3001 3002 50051
+
+# Default command (will be overridden by docker-compose)
+CMD ["node", "--version"]
